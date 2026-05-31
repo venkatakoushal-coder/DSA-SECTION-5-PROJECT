@@ -1,0 +1,163 @@
+// Chennai Metro Fare Optimisation - Dijkstra's Algorithm
+// CO-1 DSA Case Study
+
+import java.util.*;
+
+public class ChennaiMetroDijkstra {
+
+    static final int INF = Integer.MAX_VALUE / 2;
+
+    static class Edge {
+        String to;
+        int fare, time;
+        Edge(String to, int fare, int time) {
+            this.to = to; this.fare = fare; this.time = time;
+        }
+    }
+
+    static class State implements Comparable<State> {
+        String station;
+        int fare, time;
+        State(String station, int fare, int time) {
+            this.station = station; this.fare = fare; this.time = time;
+        }
+        public int compareTo(State other) {
+            if (this.fare != other.fare) return this.fare - other.fare;
+            return this.time - other.time; // tiebreaker
+        }
+    }
+
+    public static void main(String[] args) {
+        String[] stations = {"ALD", "AVN", "GTM", "CMR", "MGR", "TNB", "WMN"};
+
+        Map<String, List<Edge>> graph = new LinkedHashMap<>();
+        for (String s : stations) graph.put(s, new ArrayList<>());
+
+        // Add bidirectional edges (fare, time)
+        addEdge(graph, "ALD", "AVN", 10, 5);
+        addEdge(graph, "ALD", "GTM", 8,  7);
+        addEdge(graph, "AVN", "GTM", 5,  3);
+        addEdge(graph, "AVN", "CMR", 12, 4);
+        addEdge(graph, "GTM", "MGR", 10, 5);
+        addEdge(graph, "CMR", "MGR", 6,  2);
+        addEdge(graph, "CMR", "TNB", 15, 6);
+        addEdge(graph, "CMR", "WMN", 25, 9);
+        addEdge(graph, "MGR", "WMN", 12, 4);
+        addEdge(graph, "TNB", "WMN", 8,  3);
+
+        String source = "ALD";
+        String dest   = "WMN";
+
+        Map<String, Integer> dist = new LinkedHashMap<>();
+        Map<String, Integer> timeDist = new LinkedHashMap<>();
+        Map<String, String>  prev = new LinkedHashMap<>();
+
+        for (String s : stations) { dist.put(s, INF); timeDist.put(s, INF); }
+        dist.put(source, 0);
+        timeDist.put(source, 0);
+
+        PriorityQueue<State> pq = new PriorityQueue<>();
+        pq.add(new State(source, 0, 0));
+
+        Set<String> finalised = new LinkedHashSet<>();
+
+        System.out.println("============================================================");
+        System.out.println("  Chennai Metro — Dijkstra Fare Optimisation Trace");
+        System.out.println("============================================================");
+        System.out.println("  Source: ALD  |  Destination: WMN");
+        System.out.println("  Priority: min fare; tiebreaker: min time");
+
+        int step = 0;
+        while (!pq.isEmpty()) {
+            State cur = pq.poll();
+            String u = cur.station;
+
+            if (finalised.contains(u)) continue;
+            finalised.add(u);
+            step++;
+
+            System.out.println("\n------------------------------------------------------------");
+            System.out.println("  Step " + step + ": Extract-Min -> " + u +
+                    "  |  Finalised Fare: Rs." + dist.get(u) +
+                    "  |  Time so far: " + timeDist.get(u) + "m");
+            System.out.println("  Relaxations:");
+
+            List<Edge> neighbours = graph.get(u);
+            neighbours.sort(Comparator.comparing(e -> e.to));
+
+            boolean anyRelax = false;
+            for (Edge e : neighbours) {
+                if (finalised.contains(e.to)) {
+                    System.out.println("    " + e.to + ": already finalised -> skip");
+                    continue;
+                }
+                int newFare = dist.get(u) + e.fare;
+                int newTime = timeDist.get(u) + e.time;
+                int oldFare = dist.get(e.to);
+
+                if (newFare < oldFare || (newFare == oldFare && newTime < timeDist.get(e.to))) {
+                    System.out.println("    " + e.to + ": Rs." +
+                            (oldFare == INF ? "INF" : oldFare) + " -> Rs." + newFare +
+                            "  (time: " + newTime + "m)  ** RELAXED **");
+                    dist.put(e.to, newFare);
+                    timeDist.put(e.to, newTime);
+                    prev.put(e.to, u);
+                    pq.add(new State(e.to, newFare, newTime));
+                } else {
+                    System.out.println("    " + e.to + ": Rs." + newFare +
+                            " >= current Rs." + oldFare + " -> no improvement");
+                }
+                anyRelax = true;
+            }
+            if (!anyRelax) System.out.println("    (no neighbours to relax)");
+
+            if (u.equals(dest)) break;
+        }
+
+        // Path reconstruction
+        System.out.println("\n============================================================");
+        System.out.println("  Shortest Path (Min Fare) ALD -> WMN:");
+        System.out.println("============================================================");
+
+        List<String> path = new ArrayList<>();
+        String cur = dest;
+        while (cur != null) { path.add(0, cur); cur = prev.get(cur); }
+
+        System.out.println("  Path: " + String.join(" -> ", path));
+        System.out.println("  Minimum Fare: Rs." + dist.get(dest));
+        System.out.println("  Total Time  : " + timeDist.get(dest) + " min");
+
+        // Cumulative verification
+        System.out.println("\n------------------------------------------------------------");
+        System.out.println("  Cumulative Fare Verification:");
+        System.out.println("------------------------------------------------------------");
+        System.out.printf("  %-20s %-15s %-15s%n", "Segment", "Edge Fare", "Cumulative Fare");
+        System.out.println("  " + "-".repeat(52));
+
+        int cumFare = 0;
+        int cumTime = 0;
+        System.out.printf("  %-20s %-15s Rs.%d%n", "Start at ALD", "-", cumFare);
+
+        for (int i = 0; i < path.size() - 1; i++) {
+            String from = path.get(i);
+            String to   = path.get(i + 1);
+            for (Edge e : graph.get(from)) {
+                if (e.to.equals(to)) {
+                    cumFare += e.fare;
+                    cumTime += e.time;
+                    System.out.printf("  %-20s Rs.%-12d Rs.%d%n",
+                            from + " -> " + to, e.fare, cumFare);
+                    break;
+                }
+            }
+        }
+        System.out.println("\n  Final Fare = Rs." + cumFare + " | Total Time = " + cumTime + " min");
+        System.out.println("  Verified: Rs." + cumFare + " == Rs." + dist.get(dest) + " -> OK");
+        System.out.println("============================================================");
+    }
+
+    static void addEdge(Map<String, List<Edge>> g, String u, String v, int fare, int time) {
+        g.get(u).add(new Edge(v, fare, time));
+        g.get(v).add(new Edge(u, fare, time));
+    }
+}
