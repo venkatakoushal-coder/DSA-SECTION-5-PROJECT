@@ -1,0 +1,132 @@
+// MediFlow Hospital - Plain BST Patient ID Indexing
+// CO-1 DSA Case Study - Sub-question (a)
+
+public class MediFlowBST {
+
+    static class Node {
+        int patientId;
+        Node left, right;
+
+        Node(int id) {
+            patientId = id;
+            left = right = null;
+        }
+    }
+
+    static Node root = null;
+
+    // Insert a Patient ID
+    static Node insert(Node node, int id) {
+        if (node == null) return new Node(id);
+        if (id < node.patientId)
+            node.left = insert(node.left, id);
+        else
+            node.right = insert(node.right, id);
+        return node;
+    }
+
+    // Height = longest root-to-leaf path in edges
+    static int height(Node node) {
+        if (node == null) return -1;
+        return 1 + Math.max(height(node.left), height(node.right));
+    }
+
+    // Search and return hop count
+    static int search(Node node, int id) {
+        int hops = 0;
+        while (node != null) {
+            hops++;
+            if (id == node.patientId) return hops;
+            else if (id < node.patientId) node = node.left;
+            else node = node.right;
+        }
+        return hops;
+    }
+
+    // Inorder traversal
+    static void inorder(Node node) {
+        if (node == null) return;
+        inorder(node.left);
+        System.out.print(node.patientId + " ");
+        inorder(node.right);
+    }
+
+    // Print BST structure
+    static void printTree(Node node, String prefix, boolean isRight) {
+        if (node == null) return;
+        System.out.println(prefix + (isRight ? "R-- " : "ROOT ") + "[" + node.patientId + "]");
+        String childPrefix = prefix + (isRight ? "    " : "");
+        if (node.left != null || node.right != null) {
+            if (node.left != null)
+                printTree(node.left, childPrefix + "    ", false);
+            else
+                System.out.println(childPrefix + "    L-- (null)");
+            if (node.right != null)
+                printTree(node.right, childPrefix + "    ", true);
+            else
+                System.out.println(childPrefix + "    R-- (null)");
+        }
+    }
+
+    public static void main(String[] args) {
+        int[] appointmentIDs = {20, 30, 35, 40, 45, 50, 60, 65, 70, 75, 80, 85, 90};
+
+        System.out.println("============================================================");
+        System.out.println("   MediFlow Hospital — Plain BST Construction");
+        System.out.println("============================================================");
+        System.out.println("\nInserting Patient IDs in appointment order:");
+        for (int id : appointmentIDs) {
+            root = insert(root, id);
+            System.out.println("  Inserted: " + id);
+        }
+
+        System.out.println("\n------------------------------------------------------------");
+        System.out.println("  BST Structure (Right-Skewed Chain):");
+        System.out.println("------------------------------------------------------------");
+        printTree(root, "", false);
+
+        int h = height(root);
+        System.out.println("\n  Tree Height (edges): " + h);
+        System.out.println("  Total Nodes        : " + appointmentIDs.length);
+        System.out.println("  Structure          : Pure right-skewed chain (degenerate BST)");
+
+        System.out.println("\n------------------------------------------------------------");
+        System.out.println("  SLA Calculation:");
+        System.out.println("------------------------------------------------------------");
+        int worstHops = h + 1;
+        int latencyNs = worstHops * 200;
+        int slaNs = 5_000_000;
+        System.out.println("  Worst-case lookup  : Patient ID = 90 (deepest leaf)");
+        System.out.println("  Hops required      : " + worstHops);
+        System.out.println("  Latency = " + worstHops + " hops x 200 ns/hop = " + latencyNs + " ns = " + (latencyNs / 1_000_000.0) + " ms");
+        System.out.println("  SLA Limit          : " + slaNs + " ns = 5.0 ms");
+        System.out.println("  Result             : " + (latencyNs < slaNs ? "SLA MET" : "SLA VIOLATED"));
+        System.out.println("  NOTE: O(N) growth means SLA breaks at N=25,000 patients.");
+
+        System.out.println("\n------------------------------------------------------------");
+        System.out.println("  Point-Lookup Hop Count Per Patient ID:");
+        System.out.println("------------------------------------------------------------");
+        System.out.printf("  %-12s %-8s %-15s%n", "Patient ID", "Hops", "Latency (ns)");
+        System.out.println("  ----------   ------   --------------");
+        for (int id : appointmentIDs) {
+            int hops = search(root, id);
+            System.out.printf("  %-12d %-8d %d ns%n", id, hops, hops * 200);
+        }
+
+        System.out.println("\n------------------------------------------------------------");
+        System.out.println("  Inorder Traversal (Sorted Patient IDs):");
+        System.out.println("------------------------------------------------------------");
+        System.out.print("  ");
+        inorder(root);
+        System.out.println();
+
+        System.out.println("\n============================================================");
+        System.out.println("  Structural Diagnosis:");
+        System.out.println("============================================================");
+        System.out.println("  IDs arrive in ascending order -> every new ID > all existing.");
+        System.out.println("  Each insert goes to rightmost child -> right-skewed chain.");
+        System.out.println("  Height = N-1 = 12  (optimal for balanced = floor(log2 13) = 3)");
+        System.out.println("  This is the adversarial worst-case for plain BST.");
+        System.out.println("============================================================");
+    }
+}
