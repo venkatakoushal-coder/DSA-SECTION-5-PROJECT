@@ -1,124 +1,77 @@
-// X (Twitter) - Retweet Reach Prediction using Bounded BFS
-// CO-1 DSA Case Study
 
 import java.util.*;
 
-public class TwitterBFS {
+public class MavenIterativeDFSTopologicalSort {
+
+    static class State {
+        String node;
+        boolean leave;
+
+        State(String node, boolean leave) {
+            this.node = node;
+            this.leave = leave;
+        }
+    }
 
     public static void main(String[] args) {
-        // Build directed follower graph
-        Map<String, List<String>> graph = new LinkedHashMap<>();
-        graph.put("A", Arrays.asList("B", "C"));
-        graph.put("B", Arrays.asList("D", "E"));
-        graph.put("C", Arrays.asList("E", "F"));
-        graph.put("D", Arrays.asList("G"));
-        graph.put("E", Arrays.asList("G", "H"));
-        graph.put("F", Arrays.asList("H", "I"));
-        graph.put("G", new ArrayList<>());
-        graph.put("H", new ArrayList<>());
-        graph.put("I", new ArrayList<>());
 
-        String source = "A";
-        int maxDepth = 3;
+        Map<String, List<String>> graph = new HashMap<>();
 
-        System.out.println("============================================================");
-        System.out.println("  X (Twitter) - Retweet Reach Prediction: Bounded BFS");
-        System.out.println("============================================================");
-        System.out.println("  Source: " + source + "  |  Max Depth: " + maxDepth);
-        System.out.println("  Edge X->Y means: X is followed by Y (tweet visible to Y)");
+        graph.put("app", Arrays.asList("core"));
+        graph.put("core", Arrays.asList("logging", "util"));
+        graph.put("util", Arrays.asList("math", "serial"));
+        graph.put("math", Arrays.asList("bigint"));
+        graph.put("serial", new ArrayList<>());
+        graph.put("bigint", new ArrayList<>());
+        graph.put("logging", Arrays.asList("filehandler"));
+        graph.put("filehandler", Arrays.asList("log4j"));
+        graph.put("log4j", new ArrayList<>());
 
-        Queue<String> queue = new LinkedList<>();
-        Map<String, Integer> depthMap = new LinkedHashMap<>();
-        Set<String> visited = new LinkedHashSet<>();
-        Map<String, String> predecessor = new LinkedHashMap<>();
+        Map<String, String> color = new HashMap<>();
 
-        queue.add(source);
-        visited.add(source);
-        depthMap.put(source, 0);
+        for (String node : graph.keySet()) {
+            color.put(node, "WHITE");
+        }
 
-        System.out.println("\n------------------------------------------------------------");
-        System.out.println("  BFS Queue Evolution:");
-        System.out.println("------------------------------------------------------------");
-        System.out.println("  Dequeued  | Depth | Neighbours Discovered        | Visited-Set After");
-        System.out.println("  " + "-".repeat(80));
+        Stack<State> stack = new Stack<>();
+        List<String> output = new ArrayList<>();
 
-        while (!queue.isEmpty()) {
-            String current = queue.poll();
-            int depth = depthMap.get(current);
+        stack.push(new State("app", false));
 
-            List<String> neighbours = graph.getOrDefault(current, new ArrayList<>());
-            Collections.sort(neighbours);
+        while (!stack.isEmpty()) {
 
-            List<String> discovered = new ArrayList<>();
-            List<String> skipped = new ArrayList<>();
+            State current = stack.pop();
+            String node = current.node;
 
-            if (depth < maxDepth) {
-                for (String nb : neighbours) {
-                    if (!visited.contains(nb)) {
-                        visited.add(nb);
-                        depthMap.put(nb, depth + 1);
-                        predecessor.put(nb, current);
-                        queue.add(nb);
-                        discovered.add(nb);
-                    } else {
-                        skipped.add(nb + "(visited)");
+            if (current.leave) {
+                color.put(node, "BLACK");
+                output.add(node);
+            } else {
+                if (color.get(node).equals("WHITE")) {
+
+                    color.put(node, "GREY");
+                    stack.push(new State(node, true));
+
+                    List<String> neighbors =
+                            new ArrayList<>(graph.get(node));
+
+                    Collections.sort(neighbors,
+                            Collections.reverseOrder());
+
+                    for (String neighbor : neighbors) {
+                        if (color.get(neighbor).equals("WHITE")) {
+                            stack.push(new State(neighbor, false));
+                        }
                     }
                 }
             }
-
-            String discStr;
-            if (discovered.isEmpty() && skipped.isEmpty()) {
-                discStr = "(no neighbours)";
-            } else {
-                List<String> all = new ArrayList<>(discovered);
-                all.addAll(skipped);
-                discStr = String.join(", ", all);
-            }
-
-            System.out.println("  " + current + "         | " + depth +
-                    "     | " + String.format("%-28s", discStr) +
-                    " | " + visited.toString());
         }
 
-        // Final reached users
-        System.out.println("\n------------------------------------------------------------");
-        System.out.println("  (i) Final Reached Users (excluding A):");
-        System.out.println("------------------------------------------------------------");
-        Set<String> reached = new LinkedHashSet<>(visited);
-        reached.remove(source);
-        System.out.println("  " + reached);
-        System.out.println("  Total users reached: " + reached.size());
+        Collections.reverse(output);
 
-        // Double-counting prevention
-        System.out.println("\n------------------------------------------------------------");
-        System.out.println("  (ii) Multi-In-Edge Nodes - Predecessor & Double-Count Prevention:");
-        System.out.println("------------------------------------------------------------");
-
-        Map<String, List<String>> inEdges = new LinkedHashMap<>();
-        inEdges.put("E", Arrays.asList("B", "C"));
-        inEdges.put("G", Arrays.asList("D", "E"));
-        inEdges.put("H", Arrays.asList("E", "F"));
-
-        for (String node : inEdges.keySet()) {
-            String pred = predecessor.getOrDefault(node, "N/A");
-            List<String> allPreds = inEdges.get(node);
-            List<String> otherPreds = new ArrayList<>();
-            for (String p : allPreds) {
-                if (!p.equals(pred)) otherPreds.add(p);
-            }
-            System.out.println("  Node " + node + ":");
-            System.out.println("    All in-edges from  : " + allPreds);
-            System.out.println("    Predecessor chosen : " + pred + " (first to reach " + node + " in alphabetical BFS order)");
-            System.out.println("    Other predecessors : " + otherPreds + " tried to enqueue " + node + " but it was already visited -> SKIPPED");
-            System.out.println();
+        System.out.println("Topological Order:");
+        for (String node : output) {
+            System.out.print(node + " ");
         }
-
-        System.out.println("============================================================");
-        System.out.println("  BFS Conclusion:");
-        System.out.println("============================================================");
-        System.out.println("  Reached users  : " + reached);
-        System.out.println("  Total reach    : " + reached.size() + " users within depth 3");
-        System.out.println("  Visited-set ensures each user counted exactly once.");
-        System.out.println("============================================================");
     }
 }
