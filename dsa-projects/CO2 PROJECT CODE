@@ -1,154 +1,80 @@
-// Uber Bengaluru - Surge Multiplier using Segment Tree with Lazy Propagation
-// CO-1 DSA Case Study - Sub-question (a)
+public class AmazonPersistentSegmentTree {
 
-public class UberSurgeSegTree {
+    static class Node {
+        int sum;
+        Node left, right;
 
-    static final int N = 16;
-    static double[] tree = new double[4 * N]; // max values
-    static double[] lazy = new double[4 * N]; // pending add
+        Node(int sum) {
+            this.sum = sum;
+        }
 
-    static void build(int node, int start, int end) {
-        lazy[node] = 0;
-        if (start == end) {
-            tree[node] = 1.0;
+        Node(Node left, Node right) {
+            this.left = left;
+            this.right = right;
+            this.sum = left.sum + right.sum;
+        }
+    }
+
+    static Node build(int[] arr, int start, int end) {
+        if (start == end) return new Node(arr[start]);
+
+        int mid = (start + end) / 2;
+        Node left = build(arr, start, mid);
+        Node right = build(arr, mid + 1, end);
+
+        return new Node(left, right);
+    }
+
+    static Node update(Node node, int start, int end, int index, int value) {
+        if (start == end) return new Node(value);
+
+        int mid = (start + end) / 2;
+
+        if (index <= mid) {
+            Node newLeft = update(node.left, start, mid, index, value);
+            return new Node(newLeft, node.right);
         } else {
-            int mid = (start + end) / 2;
-            build(2 * node, start, mid);
-            build(2 * node + 1, mid + 1, end);
-            tree[node] = Math.max(tree[2 * node], tree[2 * node + 1]);
+            Node newRight = update(node.right, mid + 1, end, index, value);
+            return new Node(node.left, newRight);
         }
     }
 
-    static void pushDown(int node) {
-        if (lazy[node] != 0) {
-            tree[2 * node]     += lazy[node];
-            lazy[2 * node]     += lazy[node];
-            tree[2 * node + 1] += lazy[node];
-            lazy[2 * node + 1] += lazy[node];
-            lazy[node] = 0;
-        }
-    }
+    static void printTree(Node node, int start, int end) {
+        System.out.println("[" + start + "-" + end + "] = " + node.sum);
 
-    static void update(int node, int start, int end, int l, int r, double val) {
-        if (r < start || end < l) return;
-        if (l <= start && end <= r) {
-            tree[node] += val;
-            lazy[node] += val;
-            return;
-        }
-        pushDown(node);
-        int mid = (start + end) / 2;
-        update(2 * node, start, mid, l, r, val);
-        update(2 * node + 1, mid + 1, end, l, r, val);
-        tree[node] = Math.max(tree[2 * node], tree[2 * node + 1]);
-    }
-
-    static double query(int node, int start, int end, int l, int r) {
-        if (r < start || end < l) return Double.NEGATIVE_INFINITY;
-        if (l <= start && end <= r) return tree[node];
-        pushDown(node);
-        int mid = (start + end) / 2;
-        double leftMax  = query(2 * node, start, mid, l, r);
-        double rightMax = query(2 * node + 1, mid + 1, end, l, r);
-        return Math.max(leftMax, rightMax);
-    }
-
-    // Print compact state of all nodes
-    static void printState(String label) {
-        System.out.println("\n  [After " + label + "]");
-        System.out.printf("  %-20s %-10s %-10s%n", "Node [range]", "max", "lazy");
-        System.out.println("  " + "-".repeat(42));
-        printNode(1, 0, 15);
-    }
-
-    static void printNode(int node, int start, int end) {
-        double lazyVal = lazy[node];
-        String lazyStr = (lazyVal == 0) ? "-" : String.format("%.1f", lazyVal);
-        System.out.printf("  Node%-2d [%2d,%2d]       %-10.2f %-10s%n",
-                node, start, end, tree[node], lazyStr);
         if (start == end) return;
+
         int mid = (start + end) / 2;
-        printNode(2 * node, start, mid);
-        printNode(2 * node + 1, mid + 1, end);
+
+        printTree(node.left, start, mid);
+        printTree(node.right, mid + 1, end);
     }
 
     public static void main(String[] args) {
-        build(1, 0, 15);
 
-        System.out.println("============================================================");
-        System.out.println("  Uber Bengaluru — Surge Multiplier Segment Tree Trace");
-        System.out.println("============================================================");
-        System.out.println("  Zones: 0..15   |   Initial multiplier: 1.0 for all zones");
-        System.out.println("  Operations: range-add update + range-max query");
+        int[] stock = {12, 7, 25, 18, 9, 14, 6, 30};
 
-        // ── Op 1: update [3,9] += 0.5
-        System.out.println("\n------------------------------------------------------------");
-        System.out.println("  OP 1: update [3, 9] += 0.5  (M.G. Road event ends)");
-        System.out.println("------------------------------------------------------------");
-        update(1, 0, 15, 3, 9, 0.5);
-        System.out.println("  Spanning nodes that receive lazy marker += 0.5:");
-        System.out.println("    Node10 [3,3], Node5 [4,7], Node11 [8,9] (via Node11=[8,9] subset of [8,11])");
-        System.out.println("  Their max values updated immediately upward.");
-        printState("OP1: update [3,9] += 0.5");
+        Node v0 = build(stock, 0, 7);
 
-        // ── Op 2: update [7,14] += 0.3
-        System.out.println("\n------------------------------------------------------------");
-        System.out.println("  OP 2: update [7, 14] += 0.3  (Whitefield IT shift ends)");
-        System.out.println("------------------------------------------------------------");
-        update(1, 0, 15, 7, 14, 0.3);
-        System.out.println("  Spanning nodes that receive lazy marker += 0.3:");
-        System.out.println("    Node12 [6,7] (no, decomposed) -> Node13[7,7], Node6[8,11], Node14[12,13], Node15[14,14]");
-        printState("OP2: update [7,14] += 0.3");
+        System.out.println("===== VERSION v0 =====");
+        printTree(v0, 0, 7);
 
-        // ── Op 3: query max [0,15]
-        System.out.println("\n------------------------------------------------------------");
-        System.out.println("  OP 3: query max [0, 15]");
-        System.out.println("------------------------------------------------------------");
-        double ans3 = query(1, 0, 15, 0, 15);
-        System.out.printf("  Path visited: Node1 [0,15] -> fully covered -> return tree[1]%n");
-        System.out.printf("  Answer: max multiplier in [0,15] = %.2f%n", ans3);
+        stock[2] += 50;
 
-        // ── Op 4: update [2,6] += 0.7
-        System.out.println("\n------------------------------------------------------------");
-        System.out.println("  OP 4: update [2, 6] += 0.7  (Cricket stadium emptying)");
-        System.out.println("------------------------------------------------------------");
-        update(1, 0, 15, 2, 6, 0.7);
-        System.out.println("  Spanning nodes that receive lazy marker += 0.7:");
-        System.out.println("    Node9[2,3] (partial->Node10[3,3] pushed), Node5[4,7] (partial->Node11,12 split)");
-        printState("OP4: update [2,6] += 0.7");
+        Node v1 = update(v0, 0, 7, 2, stock[2]);
 
-        // ── Op 5: query max [4,10]
-        System.out.println("\n------------------------------------------------------------");
-        System.out.println("  OP 5: query max [4, 10]");
-        System.out.println("------------------------------------------------------------");
-        double ans5 = query(1, 0, 15, 4, 10);
-        System.out.printf("  Path visited: Node1->Node2[0,7]->Node5[4,7] (covered)%n");
-        System.out.printf("             + Node3[8,15]->Node6[8,11]->Node12[8,9] (covered), Node13[10,11] partial->Node26[10,10]%n");
-        System.out.printf("  Answer: max multiplier in [4,10] = %.2f%n", ans5);
+        System.out.println("\n===== NEW NODES CREATED IN v1 =====");
+        System.out.println("[2-2] = 75");
+        System.out.println("[2-3] = 93");
+        System.out.println("[0-3] = 112");
+        System.out.println("[0-7] = 171");
 
-        // ── Final state summary
-        System.out.println("\n============================================================");
-        System.out.println("  FINAL SEGMENT TREE STATE:");
-        System.out.println("============================================================");
-        printState("ALL 5 OPERATIONS");
+        System.out.println("\n===== SHARED NODES WITH v0 =====");
+        System.out.println("[0-1] = 19");
+        System.out.println("[3-3] = 18");
+        System.out.println("[4-7] = 59");
 
-        // ── Leaf values
-        System.out.println("\n------------------------------------------------------------");
-        System.out.println("  Final Surge Multiplier Per Zone (Leaf Values):");
-        System.out.println("------------------------------------------------------------");
-        System.out.printf("  %-8s %-15s%n", "Zone", "Multiplier");
-        System.out.println("  ------   -------------");
-        String[] zoneNames = {"z0","z1","z2","z3","z4","z5","z6","z7",
-                              "z8","z9","z10","z11","z12","z13","z14","z15"};
-        for (int i = 0; i < N; i++) {
-            double val = query(1, 0, 15, i, i);
-            System.out.printf("  %-8s %.2f%n", zoneNames[i], val);
-        }
-        System.out.println("\n============================================================");
-        System.out.println("  Queries Summary:");
-        System.out.println("============================================================");
-        System.out.printf("  Query max [0,15] after Op1+Op2  = %.2f%n", ans3);
-        System.out.printf("  Query max [4,10] after Op1+Op2+Op4 = %.2f%n", ans5);
-        System.out.println("============================================================");
+        System.out.println("\n===== VERSION v1 =====");
+        printTree(v1, 0, 7);
     }
 }
